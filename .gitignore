@@ -1,4 +1,5 @@
+misc_data
+*.pgn
+*.zip
+saved_models
 data
-models
-*pgn
-*output*

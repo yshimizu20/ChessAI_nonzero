@@ -6,27 +6,29 @@ import random
 from chess_engine.model.policy import PolicyNetwork
 from chess_engine.model.value import ValueNetwork
 from chess_engine.utils.state import createStateObj
-from chess_engine.utils.dataloader import DataLoader
+from chess_engine.utils.dataloader import DataLoader, TestLoader
 
 # Hyperparameters
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-lr = 0.0001
+lr = 0.001
 batch_size = 200
-start_epoch = 0
-num_epochs = 5000
 num_games = 200
-log_path = f"log_{start_epoch}.txt"
 
 training_iterators = [
-    DataLoader(f"data/filtered/output-{year}_{month:02d}.pgn")
+    DataLoader(f"filtered/output-{year}_{month:02d}.pgn")
     for year in range(2015, 2018)
     for month in range(1, 13)
 ]
-training_idx = 0
-testing_iterator = DataLoader("data/filtered/db2023.pgn")
+testing_iterator = TestLoader("filtered/db2023.pgn")
 
 
-def train(data_source="dataset", policy_model_path=None, value_model_path=None):
+def train(
+    start_epoch=0,
+    end_epoch=5000,
+    data_source="dataset",
+    policy_model_path=None,
+    value_model_path=None,
+):
     policynet = PolicyNetwork()
     valuenet = ValueNetwork()
     if policy_model_path is not None:
@@ -36,12 +38,21 @@ def train(data_source="dataset", policy_model_path=None, value_model_path=None):
     policynet.to(device)
     valuenet.to(device)
 
+    num_epochs = end_epoch - start_epoch
+    log_path = f"log_{start_epoch}.txt"
+
     policy_criterion = nn.CrossEntropyLoss()
     value_criterion = nn.MSELoss()
-    policy_optimizer = torch.optim.Adam(policynet.parameters(), lr=lr)
-    value_optimizer = torch.optim.Adam(valuenet.parameters(), lr=lr)
+    # policy_optimizer = torch.optim.Adam(policynet.parameters(), lr=lr)
+    # value_optimizer = torch.optim.Adam(valuenet.parameters(), lr=lr)
 
-    for epoch in range(start_epoch, num_epochs):
+    optimizer = torch.optim.Adam(
+        [{"params": policynet.parameters()}, {"params": valuenet.parameters()}], lr=lr
+    )
+
+    training_idx = 0
+
+    for epoch in range(start_epoch, end_epoch):
         if data_source == "self-play":
             X, y, win = self_play(policynet, valuenet)
         elif data_source == "dataset":
@@ -53,27 +64,36 @@ def train(data_source="dataset", policy_model_path=None, value_model_path=None):
                     training_idx = 0
                 continue
 
+        X = torch.stack(X, dim=0).to(device)
+        y = torch.stack(y, dim=0).to(device)
+        win = torch.stack(win).unsqueeze(1).to(device)
+
         # train policy network
-        policy_optimizer.zero_grad()
+        # policy_optimizer.zero_grad()
         policy_loss = 0
-        # for state, move, value in zip(X, y, win):
-        #     policy = policynet(state)
-        #     policy_loss += policy_criterion(policy, move)
         policy = policynet(X)
-        policy_loss += policy_criterion(policy, y)
-        policy_loss.backward()
-        policy_optimizer.step()
+        # policy_loss += policy_criterion(policy, y)
+        # policy_loss.backward()
+        # policy_optimizer.step()
 
         # train value network
-        value_optimizer.zero_grad()
+        # value_optimizer.zero_grad()
         value_loss = 0
-        # for state, move, value in zip(X, y, win):
-        #     v = valuenet(state)
-        #     value_loss += value_criterion(v, value)
         value = valuenet(X)
-        value_loss += value_criterion(value, win)
-        value_loss.backward()
-        value_optimizer.step()
+        # value_loss += value_criterion(value, win)
+        # value_loss.backward()
+        # value_optimizer.step()
+
+        # train both networks
+        optimizer.zero_grad()
+        policy_loss = policy_criterion(policy, y)
+        value_loss = value_criterion(value, win)
+
+        alpha = 0.5
+        beta = 0.5
+        loss = alpha * policy_loss + beta * value_loss
+        loss.backward()
+        optimizer.step()
 
         print(f"Epoch {epoch + 1} of {num_epochs}")
         print(f"Policy Loss: {policy_loss}, Value Loss: {value_loss}")
@@ -81,24 +101,30 @@ def train(data_source="dataset", policy_model_path=None, value_model_path=None):
             fp.write(f"Epoch {epoch + 1} of {num_epochs}\n")
             fp.write(f"Policy Loss: {policy_loss}, Value Loss: {value_loss}\n")
 
+        del X, y, win, policy, value
+
         if epoch % 10 == 0:
             # evaluate
-            X, y, win = testing_iterator.get_data()
+            X, y, win = testing_iterator.X, testing_iterator.y, testing_iterator.win
+
             with torch.no_grad():
                 policy = policynet(X)
                 value = valuenet(X)
                 policy_loss = policy_criterion(policy, y)
                 value_loss = value_criterion(value, win)
+
             print(f"Test Policy Loss: {policy_loss}, Test Value Loss: {value_loss}")
             with open(log_path, "a") as fp:
                 fp.write(
                     f"Test Policy Loss: {policy_loss}, Test Value Loss: {value_loss}\n"
                 )
 
-            # save model
-            if epoch % 100 == 99:
-                torch.save(policynet.state_dict(), f"saved_models/policy_{epoch}.pt")
-                torch.save(valuenet.state_dict(), f"saved_models/value_{epoch}.pt")
+            del X, y, win, policy, value
+
+        # save model
+        if epoch % 100 == 99:
+            torch.save(policynet.state_dict(), f"saved_models/policy_{epoch}.pt")
+            torch.save(valuenet.state_dict(), f"saved_models/value_{epoch}.pt")
 
 
 def self_play(policynet, valuenet):
@@ -136,11 +162,11 @@ def self_play(policynet, valuenet):
             board.push(best_move)
 
         # get winner
-        winner = 0
+        winner = 0.0
         if board.result() == "1-0":
-            winner = 1
+            winner = 1.0
         elif board.result() == "0-1":
-            winner = -1
+            winner = -1.0
 
         # add to data
         for i in range(len(states)):

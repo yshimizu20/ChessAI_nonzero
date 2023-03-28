@@ -10,7 +10,7 @@ class DataLoader:
         self.filename = filename
         self.fp = open(self.filename, "r")
 
-    def _create_data(self, step):
+    def _create_data(self, step=200):
         try:
             X, y, win = createData(self.fp, step)
         except StopIteration:
@@ -26,14 +26,15 @@ class DataLoader:
 
         return X, y, win
 
-    def get_data(self, step=250):
+    def get_data(self, step=200):
         return self._create_data(step)
 
 
 class TestLoader(DataLoader):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.X, self.y, self.w = self.get_data(250)
-        self.X = torch.tensor(self.X, dtype=torch.float32).to(device)
-        self.y = torch.tensor(self.y, dtype=torch.float32).to(device)
+        X, y, win = self.get_data(100)
+        self.X = torch.stack(X, dim=0).to(device)
+        self.y = torch.stack(y, dim=0).to(device)
+        self.win = torch.stack(win).unsqueeze(1).to(device)
         self.fp.close()

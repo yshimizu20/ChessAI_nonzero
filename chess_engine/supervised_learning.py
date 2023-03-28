@@ -11,13 +11,13 @@ lr = 0.0001
 batch_size = 200
 
 training_iterators = [
-    DataLoader(f"data/filtered/output-{year}_{month:02d}.pgn")
+    DataLoader(f"filtered/output-{year}_{month:02d}.pgn")
     for year in range(2015, 2018)
     for month in range(1, 13)
 ]
 training_idx = 0
 
-testing_iterator = DataLoader("data/filtered/db2023.pgn")
+testing_iterator = DataLoader("filtered/db2023.pgn")
 
 
 def main(loadpath=None):
