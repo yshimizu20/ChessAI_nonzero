@@ -6,7 +6,7 @@ import random
 from chess_engine.model.policy import PolicyNetwork
 from chess_engine.model.value import ValueNetwork
 from chess_engine.utils.state import createStateObj
-from chess_engine.utils.dataloader import DataLoader, TestLoader
+from chess_engine.utils.dataloader import DataLoaderCluster, TestLoader
 
 # Hyperparameters
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -14,11 +14,12 @@ lr = 0.001
 batch_size = 200
 num_games = 200
 
-training_iterators = [
-    DataLoader(f"filtered/output-{year}_{month:02d}.pgn")
-    for year in range(2015, 2018)
-    for month in range(1, 13)
-]
+# training_iterators = [
+#     DataLoader(f"filtered/output-{year}_{month:02d}.pgn")
+#     for year in range(2015, 2018)
+#     for month in range(1, 13)
+# ]
+cluster = DataLoaderCluster()
 testing_iterator = TestLoader("filtered/db2023.pgn")
 
 
@@ -50,44 +51,30 @@ def train(
         [{"params": policynet.parameters()}, {"params": valuenet.parameters()}], lr=lr
     )
 
-    training_idx = 0
+    # training_idx = 0
 
     for epoch in range(start_epoch, end_epoch):
         if data_source == "self-play":
             X, y, win = self_play(policynet, valuenet)
         elif data_source == "dataset":
-            try:
-                X, y, win = training_iterators[training_idx].get_data(200)
-            except StopIteration:
-                training_idx += 1
-                if training_idx == len(training_iterators):
-                    training_idx = 0
-                continue
+            X, y, win = cluster.get_data()
 
         X = torch.stack(X, dim=0).to(device)
         y = torch.stack(y, dim=0).to(device)
         win = torch.stack(win).unsqueeze(1).to(device)
 
         # train policy network
-        # policy_optimizer.zero_grad()
         policy_loss = 0
         policy = policynet(X)
-        # policy_loss += policy_criterion(policy, y)
-        # policy_loss.backward()
-        # policy_optimizer.step()
+        policy_loss = policy_criterion(policy, y)
 
         # train value network
-        # value_optimizer.zero_grad()
         value_loss = 0
         value = valuenet(X)
-        # value_loss += value_criterion(value, win)
-        # value_loss.backward()
-        # value_optimizer.step()
+        value_loss = value_criterion(value, win)
 
         # train both networks
         optimizer.zero_grad()
-        policy_loss = policy_criterion(policy, y)
-        value_loss = value_criterion(value, win)
 
         alpha = 0.5
         beta = 0.5
