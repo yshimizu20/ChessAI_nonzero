@@ -1,5 +1,4 @@
 import torch
-import time
 
 from chess_engine.utils.state import createData
 
@@ -35,7 +34,7 @@ class DataLoaderCluster:
         ]
         self.idx = 0
 
-    def get_data(self, step=50):
+    def get_data(self, step=200):
         X, y, win = self.loaders[self.idx].get_data(step)
         if len(win) < step:
             self.idx += 1

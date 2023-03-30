@@ -48,6 +48,8 @@ def createData(fp, n_data=200):
 
         game = chess.pgn.read_game(fp)
         if game is None:
+            if len(data) == 0:
+                return [], [], []
             random.shuffle(data)
             X, y, win = zip(*data)
             return X, y, win

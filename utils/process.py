@@ -7,15 +7,20 @@ def main(year, month):
     j = 0
     k = 0
 
-    with open(f"cleaned/output_{year}-{month}.pgn", "r") as rf:
-        with open(f"filtered/output-{year}_{month}.pgn", "w") as wf:
+    with open(f"filtered/output-{year}_{month}.pgn", "r") as rf:
+        with open(f"cleaned/output-{year}_{month}.pgn", "w") as wf:
             while True:
                 i += 1
                 g = chess.pgn.read_game(rf)
                 if g is None:
                     break
                 try:
-                    if int(g.headers["TimeControl"].split("+")[0]) >= 300:
+                    # if int(g.headers["TimeControl"].split("+")[0]) >= 300:
+                    #     j += 1
+                    #     wf.write(str(g) + "\n\n")
+                    white_elo = int(g.headers["WhiteElo"])
+                    black_elo = int(g.headers["BlackElo"])
+                    if white_elo >= 2200 and black_elo >= 2200:
                         j += 1
                         wf.write(str(g) + "\n\n")
 
