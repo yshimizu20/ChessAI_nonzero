@@ -21,7 +21,7 @@ cluster = DataLoaderCluster()
 testing_iterator = TestLoader("filtered/db2023.pgn")
 
 
-def MCTS(orig_board, policynet):
+def MCTS(orig_board: chess.Board, policynet: PolicyNetwork) -> str:
     def uct(node: List):
         visits, value, *_ = node
         return value + math.sqrt(2 * math.log(visits) / visits)
@@ -58,7 +58,7 @@ def MCTS(orig_board, policynet):
                 legal_moves = board.legal_moves
                 legal_mask = torch.zeros(1968, dtype=torch.float32)
                 for move in legal_moves:
-                    legal_mask[uci_dict[move]] = 1.0
+                    legal_mask[uci_dict[move.uci()]] = 1.0
 
                 policy = policynet(createStateObj(board), legal_mask)
                 move = uci_table[torch.argmax(policy)]
@@ -83,10 +83,11 @@ def MCTS(orig_board, policynet):
     children = [nodes[child] for child in nodes[orig_board.fen()].children]
     best_move = max(children, key=lambda x: x[1])
 
+    # returns fen string of the next state
     return best_move
 
 
-def self_play(policynet, valuenet):
+def self_play(policynet: PolicyNetwork):
     data = []
 
     for i in range(num_games):

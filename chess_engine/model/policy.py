@@ -22,7 +22,7 @@ class PolicyNetwork(nn.Module):
         x = self.relu3(x)
         x = self.dropout2(x)
         x = self.fc2(x)
-        if mask:
+        if mask is not None:
             x = x * mask
         x = self.sm(x)
         return x
