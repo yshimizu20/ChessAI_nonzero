@@ -3,3 +3,4 @@ misc_data
 *.zip
 saved_models
 data
+.DS_Store
