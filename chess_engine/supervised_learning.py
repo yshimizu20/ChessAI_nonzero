@@ -13,6 +13,8 @@ lr = 0.001
 
 cluster = DataLoaderCluster()
 testing_iterator = TestLoader("filtered/db2023.pgn")
+cluster = DataLoaderCluster()
+testing_iterator = TestLoader("filtered/db2023.pgn")
 
 
 def train(
