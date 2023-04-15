@@ -29,11 +29,10 @@ def create_uci_labels():
                     ]
                 ]
             )
-            for l2, n2 in destinations:
+            for (l2, n2) in destinations:
                 if (l1, n1) != (l2, n2) and l2 in range(8) and n2 in range(8):
                     move = letters[l1] + numbers[n1] + letters[l2] + numbers[n2]
                     labels_array.append(move)
-
     for l1 in range(8):
         l = letters[l1]
         for p in promoted_to:
@@ -47,7 +46,6 @@ def create_uci_labels():
                 l_r = letters[l1 + 1]
                 labels_array.append(l + "2" + l_r + "1" + p)
                 labels_array.append(l + "7" + l_r + "8" + p)
-
     return labels_array
 
 

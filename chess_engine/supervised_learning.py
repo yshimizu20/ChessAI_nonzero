@@ -7,12 +7,10 @@ from chess_engine.utils.dataloader import DataLoaderCluster, TestLoader
 
 # Hyperparameters
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-lr = 0.001
+lr = 0.01
 # batch_size = 200
 # num_games = 200
 
-cluster = DataLoaderCluster()
-testing_iterator = TestLoader("filtered/db2023.pgn")
 cluster = DataLoaderCluster()
 testing_iterator = TestLoader("filtered/db2023.pgn")
 
@@ -33,10 +31,10 @@ def train(
     value_criterion = nn.MSELoss()
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.1)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=200, gamma=0.7)
 
     for epoch in range(start_epoch, end_epoch):
-        X, y, win = cluster.get_data()
+        X, y, win = cluster.get_data(100)
 
         X = torch.stack(X, dim=0).to(device)
         y = torch.stack(y, dim=0).to(device)
@@ -50,7 +48,7 @@ def train(
         policy_loss = policy_criterion(policy, y)
         value_loss = value_criterion(value, win)
 
-        total_loss = policy_loss + value_loss
+        total_loss = policy_loss + 0.75 * value_loss
         total_loss.backward()
         optimizer.step()
 

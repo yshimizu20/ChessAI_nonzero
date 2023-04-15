@@ -50,7 +50,8 @@ def createData(fp, n_data=200):
     data = []
 
     for i in range(n_data):
-        X, y = [], []
+        X = []
+        y = []
 
         game = chess.pgn.read_game(fp)
         if game is None:
