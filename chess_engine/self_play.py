@@ -105,7 +105,11 @@ def train(
 
         if epoch % 10 == 0:
             # evaluate
-            X, y, win = testing_iterator.X, testing_iterator.y, testing_iterator.win
+            X, y, win = (
+                testing_iterator.X.to(device),
+                testing_iterator.y.to(device),
+                testing_iterator.win.to(device),
+            )
 
             with torch.no_grad():
                 policy = policynet(X)

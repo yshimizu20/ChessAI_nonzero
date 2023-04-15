@@ -12,13 +12,19 @@ def createStateObj(board):
     state = torch.zeros((18, 8, 8), dtype=torch.float32)
     net_piece_value = 0
 
-    for square, piece in board.piece_map().items():
-        for square, piece in board.piece_map().items():
-            net_piece_value += piece_values[str(piece)]
-            if piece.color == chess.WHITE:
-                state[piece.piece_type - 1, square // 8, square % 8] = 1.0
-            else:
-                state[piece.piece_type + 5, square // 8, square % 8] = 1.0
+    net_piece_value = 0
+    piece_map = board.piece_map()
+    piece_types = [
+        piece.piece_type - 1 if piece.color == chess.WHITE else piece.piece_type + 5
+        for piece in board.piece_map().values()
+    ]
+    squares = [square for square in piece_map.keys()]
+    state[
+        piece_types,
+        [square // 8 for square in squares],
+        [square % 8 for square in squares],
+    ] = 1.0
+    net_piece_value += sum([piece_values[str(piece)] for piece in piece_map.values()])
 
     # append the 5 states above
     p1_can_castle_queenside = board.has_queenside_castling_rights(chess.WHITE)
@@ -49,11 +55,11 @@ def createData(fp, n_data=200):
 
         game = chess.pgn.read_game(fp)
         if game is None:
-            if len(data) >= 10:
-                random.shuffle(data)
-                X, y, win = zip(*data)
-                return X, y, win
-            raise StopIteration
+            if len(data) == 0:
+                return [], [], []
+            random.shuffle(data)
+            X, y, win = zip(*data)
+            return X, y, win
 
         if game.headers["Result"] == "1/2-1/2":
             win = 0.0
