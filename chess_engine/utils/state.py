@@ -44,16 +44,15 @@ def createData(fp, n_data=200):
     data = []
 
     for i in range(n_data):
-        X = []
-        y = []
+        X, y = [], []
 
         game = chess.pgn.read_game(fp)
         if game is None:
-            if len(data) >= 10:
-                random.shuffle(data)
-                X, y, win = zip(*data)
-                return X, y, win
-            raise StopIteration
+            if len(data) == 0:
+                return [], [], []
+            random.shuffle(data)
+            X, y, win = zip(*data)
+            return X, y, win
 
         if game.headers["Result"] == "1/2-1/2":
             win = 0.0

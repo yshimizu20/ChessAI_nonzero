@@ -8,27 +8,21 @@ class PolicyNetwork(nn.Module):
     def __init__(self):
         super(PolicyNetwork, self).__init__()
         self.shared_conv = SharedConv()
-        self.conv3 = nn.Conv2d(128, 128, 3, padding=1)
-        self.bn3 = nn.BatchNorm2d(128)
-        self.relu3 = nn.ReLU()
-        self.flatten = nn.Flatten()
-        self.fc1 = nn.Linear(8 * 8 * 128, 1968 * 2)
-        self.bn4 = nn.BatchNorm1d(1968 * 2)
-        self.relu4 = nn.ReLU()
-        self.fc2 = nn.Linear(1968 * 2, 1968)
+        self.fc1 = nn.Linear(8 * 8 * 128, 2048)
+        self.bn3 = nn.BatchNorm1d(2048)
+        self.relu3 = nn.LeakyReLU(0.1)
+        self.dropout2 = nn.Dropout(p=0.25)
+        self.fc2 = nn.Linear(2048, 1968)
         self.sm = nn.Softmax(dim=1)
 
     def forward(self, x, mask=None):
         x = self.shared_conv(x)
-        x = self.conv3(x)
+        x = self.fc1(x)
         x = self.bn3(x)
         x = self.relu3(x)
-        x = self.flatten(x)
-        x = self.fc1(x)
-        x = self.bn4(x)
-        x = self.relu4(x)
+        x = self.dropout2(x)
         x = self.fc2(x)
-        if mask:
+        if mask is not None:
             x = x * mask
         x = self.sm(x)
         return x

@@ -2,91 +2,101 @@ import torch
 import torch.nn as nn
 
 from chess_engine.model.policy import PolicyNetwork
-from chess_engine.utils.dataloader import DataLoader
-
+from chess_engine.model.value import ValueNetwork
+from chess_engine.utils.dataloader import DataLoaderCluster, TestLoader
 
 # Hyperparameters
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 lr = 0.0001
 batch_size = 200
+num_games = 200
 
-training_iterators = [
-    DataLoader(f"filtered/output-{year}_{month:02d}.pgn")
-    for year in range(2015, 2018)
-    for month in range(1, 13)
-]
-training_idx = 0
-
-testing_iterator = DataLoader("filtered/db2023.pgn")
+cluster = DataLoaderCluster()
+testing_iterator = TestLoader("filtered/db2023.pgn")
 
 
-def main(loadpath=None):
+def train(
+    start_epoch=0,
+    end_epoch=5000,
+    policy_model_path=None,
+    value_model_path=None,
+):
     policynet = PolicyNetwork()
-    if loadpath:
-        policynet.load_state_dict(torch.load(loadpath))
+    valuenet = ValueNetwork()
+    if policy_model_path is not None:
+        policynet.load_state_dict(torch.load(policy_model_path))
+    if value_model_path is not None:
+        valuenet.load_state_dict(torch.load(value_model_path))
+    policynet.to(device)
+    valuenet.to(device)
+
+    num_epochs = end_epoch - start_epoch
+    log_path = f"log_{start_epoch}.txt"
 
     policy_criterion = nn.CrossEntropyLoss()
-    policy_optimizer = torch.optim.Adam(policynet.parameters(), lr=lr)
+    value_criterion = nn.MSELoss()
 
-    train(policynet, policy_criterion, policy_optimizer)
+    optimizer = torch.optim.Adam(
+        [{"params": policynet.parameters()}, {"params": valuenet.parameters()}], lr=lr
+    )
 
+    for epoch in range(start_epoch, end_epoch):
+        X, y, win = cluster.get_data()
 
-def train(policynet, policy_criterion, policy_optimizer, num_epochs=5000):
-    for epoch in range(num_epochs):
-        with open("log20000.txt", "a") as f:
-            f.write(f"Epoch {epoch + 1} of {num_epochs}")
-        print(f"Epoch {epoch + 1} of {num_epochs}")
-        running_loss = 0.0
+        X = torch.stack(X, dim=0).to(device)
+        y = torch.stack(y, dim=0).to(device)
+        win = torch.stack(win).unsqueeze(1).to(device)
 
-        # Get the inputs
-        try:
-            X, y, _ = training_iterators[training_idx].get_data(200)
-        except StopIteration:
-            training_idx += 1
-            if training_idx == len(training_iterators):
-                training_idx = 0
-            continue
+        # train policy network
+        policy_loss = 0
+        policy = policynet(X)
+        policy_loss = policy_criterion(policy, y)
 
-        X = torch.tensor(X, dtype=torch.float32).to(device)
-        y = torch.tensor(y, dtype=torch.float32).to(device)
+        # train value network
+        value_loss = 0
+        value = valuenet(X)
+        value_loss = value_criterion(value, win)
 
-        # Zero the parameter gradients
-        policy_optimizer.zero_grad()
+        # train both networks
+        optimizer.zero_grad()
 
-        # Forward + backward + optimize
-        outputs = policynet(X)
-        loss = policy_criterion(outputs, y)
+        alpha = 0.5
+        beta = 0.5
+        loss = alpha * policy_loss + beta * value_loss
         loss.backward()
-        policy_optimizer.step()
+        optimizer.step()
 
-        # Print statistics
-        running_loss += loss.item()
-        with open("log20000.txt", "a") as f:
-            f.write("[%d] training loss: %.5f" % (epoch + 1, running_loss))
-        print("[%d] training loss: %.5f" % (epoch + 1, running_loss))
-        running_loss = 0.0
+        print(f"Epoch {epoch + 1} of {num_epochs}")
+        print(f"Policy Loss: {policy_loss}, Value Loss: {value_loss}")
+        with open(log_path, "a") as fp:
+            fp.write(f"Epoch {epoch + 1} of {num_epochs}\n")
+            fp.write(f"Policy Loss: {policy_loss}, Value Loss: {value_loss}\n")
 
-        del X
-        del y
-        del outputs
+        del X, y, win, policy, value
 
-        X, y = testing_iterator.X, testing_iterator.y
         if epoch % 10 == 0:
-            with torch.no_grad():
-                outputs = policynet(X)
-                loss = policy_criterion(outputs, y)
-            running_loss += loss.item()
-            with open("log20000.txt", "a") as f:
-                f.write("[%d] test loss: %.5f" % (epoch + 1, running_loss))
-            print("[%d] test loss: %.5f" % (epoch + 1, running_loss))
-            running_loss = 0.0
-            del X
-            del y
-            del outputs
+            # evaluate
+            X, y, win = testing_iterator.X, testing_iterator.y, testing_iterator.win
 
-        if epoch % 100 == 9:
-            torch.save(policynet.state_dict(), f"models/model_{epoch}.pt")
+            with torch.no_grad():
+                policy = policynet(X)
+                value = valuenet(X)
+                policy_loss = policy_criterion(policy, y)
+                value_loss = value_criterion(value, win)
+
+            print(f"Test Policy Loss: {policy_loss}, Test Value Loss: {value_loss}")
+            with open(log_path, "a") as fp:
+                fp.write(
+                    f"Test Policy Loss: {policy_loss}, Test Value Loss: {value_loss}\n"
+                )
+
+            del X, y, win, policy, value
+
+        # save model
+        if epoch % 100 == 99:
+            torch.save(policynet.state_dict(), f"saved_models/policy_{epoch}.pt")
+            torch.save(valuenet.state_dict(), f"saved_models/value_{epoch}.pt")
 
 
 if __name__ == "__main__":
-    main()
+    train()
