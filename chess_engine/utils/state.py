@@ -10,9 +10,7 @@ from chess_engine.utils.utils import uci_dict, uci_table, piece_values
 def createStateObj(board):
     # convert state into a 8x8x12 tensor
     state = torch.zeros((18, 8, 8), dtype=torch.float32)
-    net_piece_value = 0
 
-    net_piece_value = 0
     piece_map = board.piece_map()
     piece_types = [
         piece.piece_type - 1 if piece.color == chess.WHITE else piece.piece_type + 5
@@ -24,7 +22,7 @@ def createStateObj(board):
         [square // 8 for square in squares],
         [square % 8 for square in squares],
     ] = 1.0
-    net_piece_value += sum([piece_values[str(piece)] for piece in piece_map.values()])
+    net_piece_value = sum([piece_values[str(piece)] for piece in piece_map.values()])
 
     # append the 5 states above
     p1_can_castle_queenside = board.has_queenside_castling_rights(chess.WHITE)
