@@ -41,39 +41,28 @@ def createStateObj(board):
     return state
 
 
-tag = ("1/2-1/2", "1-0", "0-1")
+tag = {"1/2-1/2": 0.0, "1-0": 1.0, "0-1": -1.0}
 
 
 def createData(fp, n_data=200):
-    data = []
+    X, y, win = [], [], []
 
     for i in range(n_data):
-        X = []
-        y = []
-
         game = chess.pgn.read_game(fp)
         if game is None:
-            if len(data) == 0:
+            if len(X) == 0:
                 return [], [], []
-            random.shuffle(data)
-            X, y, win = zip(*data)
             return X, y, win
 
-        if game.headers["Result"] == "1/2-1/2":
-            win = 0.0
-        elif game.headers["Result"] == "1-0":
-            win = 1.0
-        elif game.headers["Result"] == "0-1":
-            win = -1.0
-        else:
-            print("Error: Unexpected result string" + game.headers["Result"])
-            continue
-        if game.headers["Result"] not in tag:
+        try:
+            w = tag[game.headers["Result"]]
+        except KeyError:
             continue
 
         board = game.board()
 
         lst = list(game.mainline_moves())
+        len_lst = len(lst)
         for move in lst[:-1]:
             X.append(createStateObj(board))
             board.push(move)
@@ -84,10 +73,6 @@ def createData(fp, n_data=200):
                 X.pop()
                 break
             y.append(y_ele)
+            win.append(torch.tensor(w * (i + 1) / len_lst, dtype=torch.float32))
 
-        for i in range(len(X)):
-            data.append((X[i], y[i], torch.tensor(win, dtype=torch.float32)))
-
-    random.shuffle(data)
-    X, y, win = zip(*data)
     return X, y, win
