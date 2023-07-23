@@ -1,4 +1,5 @@
 import torch
+import os
 
 from chess_engine.utils.state import createData
 
@@ -28,9 +29,11 @@ class DataLoader:
 class DataLoaderCluster:
     def __init__(self):
         self.loaders = [
-            DataLoader(f"filtered/output-{yr}_{mo:02d}.pgn")
+            DataLoader(f"chess_engine/datasets/train/lichess_elite_{yr}-{mo:02d}.pgn")
             for mo in range(1, 13)
-            for yr in range(2015, 2018)
+            for yr in range(2020, 2024)
+            if f"lichess_elite_{yr}-{mo:02d}.pgn"
+            in os.listdir("chess_engine/datasets/train")
         ]
         self.idx = 0
 

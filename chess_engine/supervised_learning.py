@@ -11,7 +11,7 @@ lr = 0.01
 # num_games = 200
 
 cluster = DataLoaderCluster()
-testing_iterator = TestLoader("datasets/db2023.pgn")
+testing_iterator = TestLoader("datasets/validation/lichess_elite_2023-06.pgn")
 
 
 def train(
