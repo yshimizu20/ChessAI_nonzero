@@ -1,7 +1,6 @@
 import chess
 import chess.pgn
 import numpy as np
-import random
 import torch
 import itertools
 
@@ -9,7 +8,7 @@ from chess_engine.utils.utils import uci_dict, uci_table, piece_values
 
 
 def createStateObj(board):
-    # convert state into a 8x8x12 tensor
+    # convert state into a 35 x 8 x 8 tensor
     state = torch.zeros((35, 8, 8), dtype=torch.float32)
 
     piece_map = board.piece_map()

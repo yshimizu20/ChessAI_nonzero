@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 
-# from chess_engine.model.policy import PolicyNetwork
 from chess_engine.model.model import ChessModel
 from chess_engine.utils.dataloader import DataLoaderCluster, TestLoader
 
@@ -12,7 +11,7 @@ lr = 0.01
 # num_games = 200
 
 cluster = DataLoaderCluster()
-testing_iterator = TestLoader("filtered/db2023.pgn")
+testing_iterator = TestLoader("datasets/db2023.pgn")
 
 
 def train(

@@ -3,8 +3,7 @@ import torch.nn as nn
 import chess
 import random
 
-from chess_engine.model.policy import PolicyNetwork
-from chess_engine.model.value import ValueNetwork
+from chess_engine.model.model import ChessModel
 from chess_engine.utils.state import createStateObj
 from chess_engine.utils.dataloader import DataLoader, TestLoader
 
@@ -26,35 +25,26 @@ def train(
     start_epoch=0,
     end_epoch=5000,
     data_source="dataset",
-    policy_model_path=None,
-    value_model_path=None,
+    model_path=None,
 ):
-    policynet = PolicyNetwork()
-    valuenet = ValueNetwork()
-    if policy_model_path is not None:
-        policynet.load_state_dict(torch.load(policy_model_path))
-    if value_model_path is not None:
-        valuenet.load_state_dict(torch.load(value_model_path))
-    policynet.to(device)
-    valuenet.to(device)
+    model = ChessModel()
+    if model_path is not None:
+        model.load_state_dict(torch.load(model_path))
+    model.to(device)
 
     num_epochs = end_epoch - start_epoch
     log_path = f"log_{start_epoch}.txt"
 
     policy_criterion = nn.CrossEntropyLoss()
     value_criterion = nn.MSELoss()
-    # policy_optimizer = torch.optim.Adam(policynet.parameters(), lr=lr)
-    # value_optimizer = torch.optim.Adam(valuenet.parameters(), lr=lr)
 
-    optimizer = torch.optim.Adam(
-        [{"params": policynet.parameters()}, {"params": valuenet.parameters()}], lr=lr
-    )
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     training_idx = 0
 
     for epoch in range(start_epoch, end_epoch):
         if data_source == "self-play":
-            X, y, win = self_play(policynet, valuenet)
+            X, y, win = self_play(model)
         elif data_source == "dataset":
             try:
                 X, y, win = training_iterators[training_idx].get_data(200)
@@ -68,21 +58,8 @@ def train(
         y = torch.stack(y, dim=0).to(device)
         win = torch.stack(win).unsqueeze(1).to(device)
 
-        # train policy network
-        # policy_optimizer.zero_grad()
-        policy_loss = 0
-        policy = policynet(X)
-        # policy_loss += policy_criterion(policy, y)
-        # policy_loss.backward()
-        # policy_optimizer.step()
-
-        # train value network
-        # value_optimizer.zero_grad()
-        value_loss = 0
-        value = valuenet(X)
-        # value_loss += value_criterion(value, win)
-        # value_loss.backward()
-        # value_optimizer.step()
+        model.train()
+        policy, value = model(X)
 
         # train both networks
         optimizer.zero_grad()
@@ -112,8 +89,7 @@ def train(
             )
 
             with torch.no_grad():
-                policy = policynet(X)
-                value = valuenet(X)
+                policy, value = model(X)
                 policy_loss = policy_criterion(policy, y)
                 value_loss = value_criterion(value, win)
 
@@ -127,11 +103,10 @@ def train(
 
         # save model
         if epoch % 100 == 99:
-            torch.save(policynet.state_dict(), f"saved_models/policy_{epoch}.pt")
-            torch.save(valuenet.state_dict(), f"saved_models/value_{epoch}.pt")
+            torch.save(model.state_dict(), f"saved_models/model_{epoch + 1}.pt")
 
 
-def self_play(policynet, valuenet):
+def self_play(model):
     data = []
 
     for i in range(num_games):
@@ -147,7 +122,7 @@ def self_play(policynet, valuenet):
             for move in legal_moves:
                 legal_mask[move.from_square * 64 + move.to_square] = 1.0
 
-            policy = policynet(state, legal_mask)
+            policy, _ = model(state.unsqueeze(0).to(device))
             # select top 10 moves
             top10 = torch.topk(policy, 10)[1]
 
@@ -156,7 +131,7 @@ def self_play(policynet, valuenet):
             best_value = -10
             for move in top10:
                 board.push(move)
-                value = valuenet(createStateObj(board))
+                _, value = model(createStateObj(board))
                 if value > best_value:
                     best_move = move
                     best_value = value

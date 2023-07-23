@@ -32,7 +32,7 @@ class ChessModel(nn.Module):
             nn.ReLU(),
             nn.Conv2d(256, 256, 3, padding="same"),
             nn.BatchNorm2d(256),
-            # nn.ReLU(),
+            nn.ReLU(),
         )
 
     def forward(self, x):

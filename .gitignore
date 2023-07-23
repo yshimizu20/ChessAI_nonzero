@@ -2,5 +2,5 @@ misc_data
 *.pgn
 *.zip
 saved_models
-data
+datasets
 .DS_Store
