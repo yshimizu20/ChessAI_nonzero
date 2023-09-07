@@ -34,7 +34,7 @@ def train(
     value_criterion = nn.MSELoss()
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=200, gamma=0.95)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.9)
 
     for epoch in range(start_epoch, end_epoch):
         X, y, win = cluster.get_data(100)
