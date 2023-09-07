@@ -43,7 +43,7 @@ def createStateObj(board):
         state[18, board.ep_square // 8, board.ep_square % 8] = 1.0
 
     # squares white pawns can move to
-    from_mask = np.zeros(64, dtype=np.bool)
+    from_mask = np.zeros(64, dtype=np.bool_)
     from_mask[list(board.pieces(chess.PAWN, chess.WHITE))] = 1
     from_mask = int.from_bytes(np.packbits(from_mask), byteorder="big")
     to_squares = [
@@ -52,7 +52,7 @@ def createStateObj(board):
     state[19, [sq // 8 for sq in to_squares], [sq % 8 for sq in to_squares]] += 1.0
 
     # squares black pawns can move to
-    from_mask = np.zeros(64, dtype=np.bool)
+    from_mask = np.zeros(64, dtype=np.bool_)
     from_mask[list(board.pieces(chess.PAWN, chess.BLACK))] = 1
     from_mask = int.from_bytes(np.packbits(from_mask), byteorder="big")
     to_squares = [

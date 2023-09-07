@@ -4,3 +4,5 @@ misc_data
 saved_models
 datasets
 .DS_Store
+log*.txt
+__pycache__

@@ -3,7 +3,7 @@ import os
 
 if __name__ == "__main__":
     # find the latest model
-    model_path = "chess_engine/saved_models"
+    model_path = "saved_models"
     model_files = os.listdir(model_path)
 
     if len(model_files) == 0:

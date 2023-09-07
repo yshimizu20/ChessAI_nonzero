@@ -6,19 +6,21 @@ from chess_engine.utils.dataloader import DataLoaderCluster, TestLoader
 
 # Hyperparameters
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print("device: ", device)
+
 lr = 0.01
 # batch_size = 200
 # num_games = 200
 
 cluster = DataLoaderCluster()
 testing_iterator = TestLoader(
-    "chess_engine/datasets/validation/lichess_elite_2023-06.pgn"
+    "chess_engine/datasets/validation/lichess_elite_2022-12.pgn"
 )
 
 
 def train(
     start_epoch=0,
-    end_epoch=5000,
+    end_epoch=500000,
     model_path=None,
 ):
     model = ChessModel()
@@ -32,10 +34,10 @@ def train(
     value_criterion = nn.MSELoss()
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=200, gamma=0.7)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=200, gamma=0.95)
 
     for epoch in range(start_epoch, end_epoch):
-        X, y, win = cluster.get_data(100)
+        X, y, win = cluster.get_data(20)
 
         X = torch.stack(X, dim=0).to(device)
         y = torch.stack(y, dim=0).to(device)
@@ -49,6 +51,8 @@ def train(
         policy_loss = policy_criterion(policy, y)
         value_loss = value_criterion(value, win)
 
+        del X, y, win, policy, value
+
         total_loss = policy_loss + 0.75 * value_loss
         total_loss.backward()
         optimizer.step()
@@ -60,8 +64,6 @@ def train(
         with open(log_path, "a") as fp:
             fp.write(f"Epoch {epoch + 1} of {end_epoch}\n")
             fp.write(f"Policy Loss: {policy_loss}, Value Loss: {value_loss}\n")
-
-        del X, y, win, policy, value
 
         if epoch % 10 == 0:
             # evaluate
@@ -86,7 +88,7 @@ def train(
             del X, y, win, policy, value
 
         # save model
-        if epoch % 100 == 99:
+        if epoch % 1000 == 0:
             torch.save(model.state_dict(), f"saved_models/model_{epoch + 1}.pth")
 
 
