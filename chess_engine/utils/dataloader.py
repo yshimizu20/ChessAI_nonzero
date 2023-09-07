@@ -55,7 +55,7 @@ class TestLoader(DataLoader):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         X, y, win = self.get_data(10)
-        self.X = torch.stack(X, dim=0).to(device)
-        self.y = torch.stack(y, dim=0).to(device)
-        self.win = torch.stack(win).unsqueeze(1).to(device)
+        self.X = torch.stack(X, dim=0)
+        self.y = torch.stack(y, dim=0)
+        self.win = torch.stack(win).unsqueeze(1)
         self.fp.close()
