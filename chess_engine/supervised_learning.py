@@ -37,7 +37,7 @@ def train(
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=200, gamma=0.95)
 
     for epoch in range(start_epoch, end_epoch):
-        X, y, win = cluster.get_data(20)
+        X, y, win = cluster.get_data(100)
 
         X = torch.stack(X, dim=0).to(device)
         y = torch.stack(y, dim=0).to(device)
@@ -88,7 +88,7 @@ def train(
             del X, y, win, policy, value
 
         # save model
-        if epoch % 1000 == 0:
+        if epoch % 1000 == 1:
             torch.save(model.state_dict(), f"saved_models/model_{epoch + 1}.pth")
 
 
