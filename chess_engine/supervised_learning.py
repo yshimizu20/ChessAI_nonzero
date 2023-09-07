@@ -14,7 +14,7 @@ lr = 0.01
 
 cluster = DataLoaderCluster()
 testing_iterator = TestLoader(
-    "chess_engine/datasets/validation/lichess_elite_2022-12.pgn"
+    "chess_engine/datasets/validation/lichess_elite_2023-07.pgn"
 )
 
 
